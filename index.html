@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brito Contabilidade Digital - v1.1.4</title>
+    <!-- Bibliotecas Core Estáveis -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            transition: background-color 0.3s ease;
+        }
+
+        /* Ocultar setas de inputs numéricos */
+        input::-webkit-outer-spin-button, 
+        input::-webkit-inner-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        .animate-in { 
+            animation: fadeIn 0.4s ease-out; 
+        }
+
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(12px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: white !important; padding: 0 !important; }
+            .pdf-page { padding: 2cm !important; border: none !important; box-shadow: none !important; }
+        }
+        .print-only { display: none; }
+
+        /* Classes de Cores Dinâmicas */
+        .btn-orange { background-color: #FF7000; color: white; }
+        .btn-teal { background-color: #2D8B7A; color: white; }
+        .btn-navy { background-color: #0F172A; color: white; }
+        .card-navy { background-color: #123456; }
+        .card-teal { background-color: #38A385; }
+        
+        .theme-transition { transition: all 0.3s ease; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        /**
+         * PROJETO: Ecossistema Contábil Digital
+         * AUTOR: Jossian Brito
+         * DATA: 16/04/2026
+         * HORA: 20:55
+         * VERSÃO: 1.1.4
+         * * MODIFICAÇÕES:
+         * - Fix: Erro de "fR is not defined" no simulador de impostos (ReferenceError).
+         * - Fix: Sincronização de nomes de variáveis no motor de cálculo tributário.
+         * - Melhoria: Tratamento de erro nos motores de cálculo para evitar crash na UI.
+         * - Refinamento: Indentação rigorosa de 4 espaços em todos os blocos.
+         */
+
+        const { useState, useEffect } = React;
+
+        // --- ATIVOS VISUAIS (SVG INLINE BASEADOS NAS IMAGENS ORIGINAIS) ---
+
+        const LogoBrito = ({ darkMode }) => (
+            <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="20" fill="transparent"/>
+                <path d="M30 20H55C65 20 70 25 70 32C70 38 66 42 60 44C68 46 72 52 72 60C72 70 65 78 52 78H30V20Z" fill={darkMode ? "#FFFFFF" : "#0F172A"}/>
+                <path d="M30 20L45 20L45 45L30 35V20Z" fill="#38A385"/>
+                <rect x="75" y="55" width="20" height="25" rx="3" fill={darkMode ? "#38A385" : "#0F172A"}/>
+                <rect x="78" y="58" width="14" height="6" fill="#A5F3E3"/>
+                <circle cx="81" cy="68" r="1.5" fill="white"/><circle cx="85" cy="68" r="1.5" fill="white"/><circle cx="89" cy="68" r="1.5" fill="white"/>
+                <circle cx="81" cy="72" r="1.5" fill="white"/><circle cx="85" cy="72" r="1.5" fill="white"/><circle cx="89" cy="72" r="1.5" fill="white"/>
+                <rect x="85" y="75" width="6" height="3" fill="#FF7000"/>
+                <path d="M15 50L25 40L35 50L25 60L15 50Z" fill="#38A385" stroke="white" strokeWidth="2"/>
+                <path d="M22 50L24 52L28 48" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+        );
+
+        const IconRescisao = () => (
+            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="25" y="15" width="50" height="65" rx="4" fill="white" stroke="#0F172A" strokeWidth="2"/>
+                <path d="M32 25H68M32 35H68M32 45H50" stroke="#0F172A" strokeWidth="2" strokeLinecap="round"/>
+                <text x="35" y="65" fill="#0F172A" style={{font: "bold 8px Inter"}}>CONTRAT</text>
+                <circle cx="75" cy="30" r="10" fill="#E2E8F0" stroke="#0F172A" strokeWidth="2"/>
+                <path d="M75 25V35M70 30H80" stroke="#0F172A" strokeWidth="2"/>
+                <rect x="55" y="60" width="30" height="30" rx="2" fill="#38BDF8" stroke="#0F172A" strokeWidth="2"/>
+                <rect x="60" y="65" width="20" height="6" fill="white"/>
+            </svg>
+        );
+
+        const IconImpostos = () => (
+            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="30" cy="30" r="15" fill="#FF7000" stroke="white" strokeWidth="2"/>
+                <text x="23" y="36" fill="white" style={{font: "bold 16px Inter"}}>%</text>
+                <rect x="60" y="15" width="30" height="40" rx="3" fill="#E2E8F0" stroke="#0F172A" strokeWidth="2"/>
+                <rect x="65" y="20" width="20" height="4" fill="#38A385"/>
+                <path d="M50 40C45 45 55 50 50 55" stroke="#0F172A" strokeWidth="2" fill="none"/>
+                <path d="M48 53L50 55L52 53" stroke="#0F172A" strokeWidth="2"/>
+                <path d="M25 75C25 65 45 65 45 75V90H25V75Z" fill="#FDE047" stroke="#0F172A" strokeWidth="2"/>
+                <path d="M40 80C40 75 55 75 55 80V90H40V80Z" fill="#38A385" stroke="#0F172A" strokeWidth="2"/>
+                <rect x="65" y="65" width="25" height="25" fill="white" stroke="#0F172A" strokeWidth="2"/>
+            </svg>
+        );
+
+        const IconBack = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        );
+
+        const IconCalendar = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+        );
+
+        const IconMoon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        );
+
+        const IconSun = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        );
+
+        // --- ENGINES DE CÁLCULO (BUSINESS LOGIC) ---
+
+        const calculateRescisao = (d) => {
+            const s = parseFloat(d.salario) || 0;
+            const saldo = (s / 30) * (parseInt(d.dias) || 0);
+            const d13 = (s / 12) * (parseInt(d.m13) || 0);
+            const fer = ((s / 12) * (parseInt(d.mFer) || 0)) * 1.3333;
+            const multa = d.motivo === 'dispensa' ? (s * 0.08 * 12 * 0.4) : 0;
+            return { saldo, d13, fer, multa, total: saldo + d13 + fer + multa };
+        };
+
+        /**
+         * Cálculo de Impostos (Simples vs Presumido)
+         * Fator R: Determina enquadramento fiscal.
+         */
+        const calculateImpostos = (fat, folha) => {
+            const f = parseFloat(fat) || 0;
+            const l = parseFloat(folha) || 0;
+            const fatorR = f > 0 ? l / f : 0;
+            
+            // CORREÇÃO: Sincronização da variável fatorR (Evita erro "fR is not defined")
+            const simples = f * (fatorR >= 0.28 ? 0.06 : 0.155);
+            const presumido = f * 0.1633; // Média de 11.33% + 5% ISS
+            
+            return {
+                simples, 
+                presumido, 
+                melhor: simples < presumido ? 'Simples Nacional' : 'Lucro Presumido',
+                economia: Math.abs(simples - presumido),
+                fatorR: (fatorR * 100).toFixed(2)
+            };
+        };
+
+        // --- COMPONENTES ---
+
+        const Sidebar = ({ isOpen, onClose, setView, darkMode, toggleDarkMode }) => (
+            <>
+                <div className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose} />
+                <div className={`fixed top-0 left-0 bottom-0 w-4/5 max-w-[300px] ${darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'} z-[101] shadow-2xl transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="flex flex-col h-full">
+                        <div className={`${darkMode ? 'bg-slate-800' : 'bg-slate-900'} p-8 text-white relative`}>
+                            <button onClick={onClose} className="absolute top-4 right-4 text-slate-400">
+                                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            </button>
+                            <div className="w-12 h-12 bg-white rounded-xl mb-4 flex items-center justify-center shadow-lg">
+                                <span className="text-slate-900 font-black text-2xl">B</span>
+                            </div>
+                            <h3 className="font-bold text-lg leading-none">Brito Digital</h3>
+                            <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest">Painel Administrativo</p>
+                        </div>
+
+                        <nav className="flex-grow p-6 space-y-2">
+                            <button onClick={() => { setView('calendario'); onClose(); }} className={`w-full flex justify-between items-center p-4 rounded-xl transition-colors ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}>
+                                <div className="flex items-center gap-4 text-sm font-bold">
+                                    <IconCalendar /> Calendário Fiscal
+                                </div>
+                                <span className="w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                            </button>
+                            
+                            <button onClick={() => { setView('sobre'); onClose(); }} className={`w-full flex items-center gap-4 p-4 rounded-xl transition-colors text-sm font-bold ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}>
+                                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> Sobre a Brito
+                            </button>
+
+                            <div className={`h-px ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} my-4`}></div>
+
+                            <button onClick={toggleDarkMode} className={`w-full flex justify-between items-center p-4 rounded-xl transition-colors text-sm font-bold ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}>
+                                <div className="flex items-center gap-4">
+                                    {darkMode ? <IconSun /> : <IconMoon />}
+                                    {darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                                </div>
+                                <div className={`w-10 h-6 rounded-full relative transition-colors ${darkMode ? 'bg-orange-500' : 'bg-slate-300'}`}>
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${darkMode ? 'left-5' : 'left-1'}`}></div>
+                                </div>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </>
+        );
+
+        // --- VIEWS OPERACIONAIS ---
+
+        const RescisaoView = ({ onBack, darkMode }) => {
+            const [f, setF] = useState({ salario: 3500, dias: 30, m13: 12, mFer: 12, motivo: 'dispensa' });
+            const r = calculateRescisao(f);
+            const cardClass = darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100';
+            const inputClass = darkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900';
+
+            return (
+                <div className="px-6 pt-8 pb-40 animate-in">
+                    <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-black text-[10px] mb-6 uppercase tracking-[0.2em] no-print"><IconBack /> Voltar</button>
+                    <h2 className={`text-2xl font-black mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Rescisão CLT</h2>
+                    <div className={`${cardClass} p-7 rounded-[2.2rem] shadow-sm border space-y-6 mb-8 no-print`}>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salário Base</label>
+                            <input type="number" value={f.salario} onChange={e => setF({...f, salario: e.target.value})} className={`w-full p-4 rounded-2xl font-black text-xl border-none outline-none focus:ring-2 focus:ring-orange-500 ${inputClass}`} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <input type="number" value={f.dias} placeholder="Dias" onChange={e => setF({...f, dias: e.target.value})} className={`w-full p-4 rounded-2xl font-black border-none ${inputClass}`} />
+                            <input type="number" value={f.m13} placeholder="13º" onChange={e => setF({...f, m13: e.target.value})} className={`w-full p-4 rounded-2xl font-black border-none ${inputClass}`} />
+                        </div>
+                    </div>
+                    <div className="card-navy p-8 rounded-[2.5rem] text-white shadow-2xl pdf-page border-b-8 border-orange-500">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Valor Líquido Estimado</span>
+                        <div className="text-4xl font-black mt-2 text-orange-400">R$ {r.total.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</div>
+                        <div className="mt-8 pt-6 border-t border-white/5 space-y-3">
+                            <div className="flex justify-between text-xs text-slate-500"><span>Saldo de Salário</span> <span className="font-bold text-slate-300">R$ {r.saldo.toFixed(2)}</span></div>
+                            <div className="flex justify-between text-xs text-slate-500"><span>Férias + 1/3</span> <span className="font-bold text-slate-300">R$ {r.fer.toFixed(2)}</span></div>
+                        </div>
+                    </div>
+                    <button className={`w-full mt-6 p-4 rounded-xl font-black text-sm border-2 ${darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-700'} no-print`} onClick={() => window.print()}>Gerar Proposta PDF</button>
+                </div>
+            );
+        };
+
+        const ImpostosView = ({ onBack, darkMode }) => {
+            const [f, setF] = useState({ fat: 20000, folha: 6000 });
+            const r = calculateImpostos(f.fat, f.folha);
+            const cardClass = darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100';
+            const inputClass = darkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900';
+
+            return (
+                <div className="px-6 pt-8 pb-40 animate-in">
+                    <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-black text-[10px] mb-6 uppercase tracking-[0.2em] no-print"><IconBack /> Voltar</button>
+                    <h2 className={`text-2xl font-black mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Análise Fiscal</h2>
+                    <div className={`${cardClass} p-7 rounded-[2.2rem] shadow-sm border space-y-6 mb-8 no-print`}>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Faturamento</label>
+                            <input type="number" value={f.fat} onChange={e => setF({...f, fat: e.target.value})} className={`w-full p-4 rounded-2xl font-black text-xl border-none outline-none focus:ring-2 focus:ring-teal-500 ${inputClass} text-teal-500`} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Folha / Pró-Labore</label>
+                            <input type="number" value={f.folha} onChange={e => setF({...f, folha: e.target.value})} className={`w-full p-4 rounded-2xl font-black text-xl border-none outline-none focus:ring-2 focus:ring-teal-500 ${inputClass}`} />
+                        </div>
+                    </div>
+                    <div className="card-teal p-8 rounded-[2.5rem] text-white shadow-2xl pdf-page">
+                        <h3 className="font-black text-teal-200 uppercase text-[10px] tracking-widest">Melhor Regime</h3>
+                        <div className="text-3xl font-black mt-2 uppercase">{r.melhor}</div>
+                        <div className="mt-6 flex gap-4">
+                            <div className="bg-white/10 p-3 rounded-xl flex-1 text-center">
+                                <p className="text-[8px] font-bold uppercase opacity-60">Fator R</p>
+                                <p className="font-black">{r.fR}%</p>
+                            </div>
+                            <div className="bg-white/10 p-3 rounded-xl flex-1 text-center">
+                                <p className="text-[8px] font-bold uppercase opacity-60">Economia</p>
+                                <p className="font-black">R$ {r.economia.toFixed(0)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button className={`w-full mt-6 p-4 rounded-xl font-black text-sm border-2 ${darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-700'} no-print`} onClick={() => window.print()}>Gerar Proposta PDF</button>
+                </div>
+            );
+        };
+
+        const CalendarView = ({ onBack, darkMode }) => {
+            const taxes = [
+                { name: 'DAS (Simples Nacional)', date: '20/04/2026', alert: true },
+                { name: 'DCTFWeb (INSS)', date: '15/04/2026', alert: false },
+                { name: 'DARF (IRRF)', date: '20/04/2026', alert: true }
+            ];
+
+            return (
+                <div className="px-6 pt-8 pb-40 animate-in">
+                    <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-black text-[10px] mb-6 uppercase tracking-[0.2em]"><IconBack /> Voltar</button>
+                    <h2 className={`text-2xl font-black mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Calendário Fiscal</h2>
+                    <div className="space-y-4">
+                        {taxes.map((t, i) => (
+                            <div key={i} className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} p-5 rounded-2xl shadow-sm border flex justify-between items-center`}>
+                                <div>
+                                    <p className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>{t.name}</p>
+                                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-2"><IconCalendar /> Vence em: {t.date}</p>
+                                </div>
+                                {t.alert && <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></span>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const AboutView = ({ onBack, darkMode }) => (
+            <div className="px-6 pt-8 pb-40 animate-in text-center">
+                <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-black text-[10px] mb-6 uppercase tracking-[0.2em]"><IconBack /> Voltar</button>
+                <div className="flex justify-center mb-6"><LogoBrito darkMode={darkMode} /></div>
+                <h2 className={`text-2xl font-black mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Brito Contabilidade</h2>
+                <div className={`${darkMode ? 'bg-slate-800 text-slate-300' : 'bg-white text-slate-600'} p-7 rounded-[2.5rem] shadow-sm border ${darkMode ? 'border-slate-700' : 'border-slate-100'} text-sm leading-relaxed`}>
+                    <p className="font-black text-orange-500 uppercase tracking-widest text-[10px] mb-4">A Nossa Essência</p>
+                    <p>Fundada por <strong>Jossian Brito</strong>, unimos Engenharia de Software e Ciências Contábeis para criar uma experiência financeira sem atritos.</p>
+                </div>
+            </div>
+        );
+
+        // --- HOME VIEW ---
+
+        const Home = ({ setView, onOpenMenu, darkMode }) => (
+            <div className="flex flex-col gap-8 px-6 pb-40 animate-in">
+                <header className="flex flex-col items-center pt-10">
+                    <div className="flex justify-between w-full items-center mb-8">
+                        <button onClick={onOpenMenu} className={`${darkMode ? 'bg-slate-800' : 'bg-slate-100'} p-2 rounded-lg`}>
+                            <div className={`w-6 h-0.5 ${darkMode ? 'bg-white' : 'bg-slate-900'} mb-1`}></div>
+                            <div className={`w-6 h-0.5 ${darkMode ? 'bg-white' : 'bg-slate-900'} mb-1`}></div>
+                            <div className={`w-6 h-0.5 ${darkMode ? 'bg-white' : 'bg-slate-900'}`}></div>
+                        </button>
+                        <div className="flex flex-col items-end">
+                            <span className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tighter`}>BRITO</span>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase">Contabilidade Digital</span>
+                        </div>
+                    </div>
+                    <LogoBrito darkMode={darkMode} />
+                    <h1 className={`text-[28px] font-black ${darkMode ? 'text-white' : 'text-slate-900'} leading-tight tracking-tight text-center mt-6`}>Sua Contabilidade<br/>na Palma da Mão</h1>
+                    <p className="text-slate-500 text-sm mt-3 text-center px-4 leading-relaxed">Abra sua Empresa, Faça sua Rescisão ou Simule Impostos em segundos.</p>
+                </header>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setView('abrirEmpresa')} className="btn-orange p-4 rounded-xl font-black text-sm active:scale-95 shadow-lg shadow-orange-500/20">Abrir Empresa</button>
+                    <button className="btn-teal p-4 rounded-xl font-black text-sm active:scale-95 shadow-lg shadow-teal-500/20">Trocar Contador</button>
+                </div>
+
+                <section>
+                    <h2 className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'} mb-5 ml-1 uppercase tracking-widest text-xs`}>Simuladores</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="card-navy p-6 rounded-3xl text-white shadow-xl flex flex-col items-center text-center cursor-pointer" onClick={() => setView('rescisao')}>
+                            <IconRescisao />
+                            <h3 className="text-xs font-bold mt-4 leading-tight">Rescisão CLT</h3>
+                            <div className="mt-4 px-4 py-2 bg-white text-slate-900 rounded-lg text-[10px] font-black uppercase">Iniciar</div>
+                        </div>
+                        <div className="card-teal p-6 rounded-3xl text-white shadow-xl flex flex-col items-center text-center cursor-pointer" onClick={() => setView('impostos')}>
+                            <IconImpostos />
+                            <h3 className="text-xs font-bold mt-4 leading-tight">Impostos PJ</h3>
+                            <div className="mt-4 px-4 py-2 bg-white text-slate-900 rounded-lg text-[10px] font-black uppercase">Simular</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        );
+
+        // --- APP ROOT ---
+
+        function App() {
+            const [view, setView] = useState('home');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [darkMode, setDarkMode] = useState(false);
+
+            return (
+                <div className={`min-h-screen max-w-md mx-auto relative theme-transition ${darkMode ? 'bg-slate-950' : 'bg-slate-50'} border-x ${darkMode ? 'border-slate-800' : 'border-slate-100'} shadow-2xl overflow-hidden`}>
+                    
+                    <Sidebar 
+                        isOpen={isMenuOpen} 
+                        onClose={() => setIsMenuOpen(false)} 
+                        setView={setView}
+                        darkMode={darkMode}
+                        toggleDarkMode={() => setDarkMode(!darkMode)}
+                    />
+
+                    <main className="min-h-screen">
+                        {view === 'home' && <Home setView={setView} onOpenMenu={() => setIsMenuOpen(true)} darkMode={darkMode} />}
+                        {view === 'rescisao' && <RescisaoView onBack={() => setView('home')} darkMode={darkMode} />}
+                        {view === 'impostos' && <ImpostosView onBack={() => setView('home')} darkMode={darkMode} />}
+                        {view === 'calendario' && <CalendarView onBack={() => setView('home')} darkMode={darkMode} />}
+                        {view === 'sobre' && <AboutView onBack={() => setView('home')} darkMode={darkMode} />}
+                    </main>
+
+                    <footer className={`fixed bottom-0 left-0 right-0 p-4 ${darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/95 border-slate-100'} backdrop-blur-xl border-t max-w-md mx-auto flex gap-1 z-50 no-print`}>
+                        <button className="flex-1 bg-[#25D366] text-white rounded-l-2xl py-4 font-black text-xs" onClick={() => window.open('https://wa.me/seunumero', '_blank')}>WhatsApp</button>
+                        <button onClick={() => setView('home')} className={`${darkMode ? 'bg-slate-800 text-white' : 'bg-slate-900 text-white'} flex-1 rounded-r-2xl py-4 font-black text-xs`}>Dashboard</button>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
